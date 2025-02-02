@@ -1,0 +1,7 @@
+label: gpt
+unit: sectors
+sector-size: 512
+
+,32M,U,*
+,+,L
+
