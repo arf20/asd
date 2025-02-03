@@ -2,6 +2,7 @@ label: gpt
 unit: sectors
 sector-size: 512
 
+,1M,21686148-6449-6E6F-744E-656564454649,*
 ,48M,U,*
 ,+,L
 
