@@ -1,0 +1,15 @@
+#!/bin/sh
+
+PATH=/bin:/sbin:/usr/bin:/usr/sbin
+
+HOSTNAME=asdbox
+hostname $HOSTNAME
+echo ""
+echo "******************************************"
+echo "arf software distribution $HOSTNAME"
+echo "******************************************"
+
+cd /etc/init.d
+mount -a
+
+

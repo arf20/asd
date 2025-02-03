@@ -2,7 +2,7 @@ label: gpt
 unit: sectors
 sector-size: 512
 
-,1M,21686148-6449-6E6F-744E-656564454649,*
-,48M,U,*
-,+,L
+size=1M,type=21686148-6449-6E6F-744E-656564454649,bootable
+size=48M,type=U,bootable
+name=asdroot,type=L
 

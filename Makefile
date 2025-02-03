@@ -12,17 +12,18 @@ $(GRUB_SRC)-efi/README $(GRUB_SRC)-bios/README:
 	tar xf $(GRUB_SRC).tar.xz
 	mv $(GRUB_SRC) $(GRUB_SRC)-efi
 	cp -r $(GRUB_SRC)-efi $(GRUB_SRC)-bios
-	rm $(GRUB_SRC).tar.xz
 
 $(GRUB_SRC)-efi/grub-install: $(GRUB_SRC)-efi/README
 	cd $(GRUB_SRC)-efi && \
 	echo depends bli part_gpt > grub-core/extra_deps.lst && \
+	./autogen.sh && \
 	./configure --target=x86_64 --with-platform=efi && \
 	make -j $(shell nproc)
 
 $(GRUB_SRC)-bios/grub-install: $(GRUB_SRC)-bios/README
 	cd $(GRUB_SRC)-bios && \
 	echo depends bli part_gpt > grub-core/extra_deps.lst && \
+	./autogen.sh && \
 	./configure --target=i386 --with-platform=pc && \
 	make -j $(shell nproc)
 
@@ -30,22 +31,19 @@ $(GRUB_SRC)-bios/grub-install: $(GRUB_SRC)-bios/README
 $(LINUX_SRC)/README:
 	wget https://cdn.kernel.org/pub/linux/kernel/v6.x/$(LINUX_SRC).tar.xz
 	tar xf $(LINUX_SRC).tar.xz
-	rm $(LINUX_SRC).tar.xz
 	cp linux_config $(LINUX_SRC)/.config
 
-$(BZIMAGE): $(LINUX_SRC)/README linux_config
+$(BZIMAGE): $(LINUX_SRC)/.config linux_config
 	cd $(LINUX_SRC) && make -j $(shell nproc)
 
 
 $(BUSYBOX_SRC)/README:
 	wget "https://www.busybox.net/downloads/$(BUSYBOX_SRC).tar.bz2"
 	tar xf $(BUSYBOX_SRC).tar.bz2
-	rm $(BUSYBOX_SRC).tar.bz2
 	cp busybox_config $(BUSYBOX_SRC)/.config
 
 $(BUSYBOX_SRC)/_install: $(BUSYBOX_SRC)/README
 	cd $(BUSYBOX_SRC) && make -j $(shell nproc) && make install
-	cp -r $(BUSYBOX_SRC)/_install/* root/
 
 espmnt:
 	mkdir espmnt
@@ -60,7 +58,7 @@ hdimage.img: espmnt rootmnt $(GRUB_SRC)-bios/grub-install $(GRUB_SRC)-efi/grub-i
 	kpartx -av hdimage.img
 	# format filesystems
 	mkfs.fat -F32 /dev/mapper/loop0p2
-	mkfs.ext4 /dev/mapper/loop0p3
+	mkfs.ext4 -L asdroot /dev/mapper/loop0p3
 	# correct loops and mount them
 	losetup /dev/loop1 /dev/mapper/loop0p2
 	losetup /dev/loop2 /dev/mapper/loop0p3
@@ -68,12 +66,13 @@ hdimage.img: espmnt rootmnt $(GRUB_SRC)-bios/grub-install $(GRUB_SRC)-efi/grub-i
 	mount /dev/loop2 rootmnt
 	# copy base files
 	cp -r root/* rootmnt/
-	# install kernel to ESP
-	cp $(BZIMAGE) espmnt/vmlinuz
-	# install UEFI bootloader
-	./$(GRUB_SRC)-efi/grub-install --target=x86_64-efi --directory=$(GRUB_SRC)-efi/grub-core --efi-directory=$(shell pwd)/espmnt/ --bootloader-id=GRUB --modules="normal part_msdos part_gpt multiboot" --root-directory=$(shell pwd)/rootmnt/ --no-floppy /dev/loop0
-	# install BIOS bootloader
+	#   install busybox
+	cp -r $(BUSYBOX_SRC)/_install/* rootmnt/
+	#   install kernel
 	cp $(BZIMAGE) rootmnt/boot/vmlinuz
+	# install UEFI bootloader
+	./$(GRUB_SRC)-efi/grub-install --target=x86_64-efi --directory=$(GRUB_SRC)-efi/grub-core --efi-directory=$(shell pwd)/espmnt/ --bootloader-id=GRUB --modules="normal part_msdos part_gpt multiboot" --root-directory=$(shell pwd)/rootmnt/ --no-floppy --removable /dev/loop0
+	# install BIOS bootloader
 	./$(GRUB_SRC)-bios/grub-install --target=i386-pc --directory=$(GRUB_SRC)-bios/grub-core --root-directory=$(shell pwd)/rootmnt/ --modules="normal part_msdos part_gpt multiboot" --no-floppy /dev/loop0
 	
 	# unmount
@@ -83,9 +82,12 @@ hdimage.img: espmnt rootmnt $(GRUB_SRC)-bios/grub-install $(GRUB_SRC)-efi/grub-i
 	losetup -d /dev/loop2
 	kpartx -d hdimage.img
 
-.PHONY: clean test
+.PHONY: clean cleanimg uefitest biostest
 cleanimg:
-	rm -r hdimage.img
+	rm -f hdimage.img
+
+clean: cleanimg
+	rm -rf $(GRUB_SRC)-efi $(GRUB_SRC)-bios $(LINUX_SRC) $(BUSYBOX_SRC) rootmnt
 
 uefitest: hdimage.img
 	qemu-system-x86_64 -m 512m -bios /usr/share/ovmf/OVMF.fd -hda hdimage.img
