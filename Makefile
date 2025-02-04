@@ -34,7 +34,10 @@ $(LINUX_SRC)/README:
 	tar xf $(LINUX_SRC).tar.xz
 	cp linux_config $(LINUX_SRC)/.config
 
-$(BZIMAGE): $(LINUX_SRC)/.config linux_config
+$(LINUX_SRC)/.config: linux_config
+	cp linux_config $(LINUX_SRC)/.config
+
+$(BZIMAGE): $(LINUX_SRC)/.config
 	cd $(LINUX_SRC) && make -j $(shell nproc)
 
 
@@ -96,6 +99,9 @@ uefitest: hdimage.img
 
 biostest: hdimage.img
 	qemu-system-x86_64 -m 512m -hda hdimage.img
+
+nettest: hdimage.img
+	qemu-system-x86_64 -m 512m -hda hdimage.img -nic user,model=vmxnet3
 
 
 

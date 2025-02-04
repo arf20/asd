@@ -1,10 +1,11 @@
 # default asd filesystems
 #  mount special fs not automounted by kernel
-devtmpfs    /dev        devtmpfs mode=0755,nosuid            0 0
-proc        /proc       proc     defaults                    0 0
-sysfs       /sys        sysfs    defaults                    0 0
+devtmpfs    /dev        devtmpfs mode=0755,nosuid,noexec             0 0
+proc        /proc       proc     defaults                            0 0
+sysfs       /sys        sysfs    defaults                            0 0
+devpts      /dev/pts    devpts   mode=620,nosuid,noexec,ptmxmode=000 0 0
 
 # disks fs
-/dev/sdb3   /           ext4     rw,errors=remount-ro        0 1
-/dev/sdb2   /boot/efi   vfat     rw                          0 0
+/dev/sdb3   /           ext4     rw,errors=remount-ro                0 1
+/dev/sdb2   /boot/efi   vfat     rw                                  0 0
 
