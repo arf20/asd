@@ -1,7 +1,8 @@
 GRUB_SRC := grub-2.12
 LINUX_REL := 6.13.1
 LINUX_SRC := linux-$(LINUX_REL)
-BUSYBOX_SRC := busybox-1.37.0
+BUSYBOX_REL := 1.36.1
+BUSYBOX_SRC := busybox
 
 BZIMAGE := $(LINUX_SRC)/arch/x86/boot/bzImage
 
@@ -37,13 +38,14 @@ $(BZIMAGE): $(LINUX_SRC)/.config linux_config
 	cd $(LINUX_SRC) && make -j $(shell nproc)
 
 
-$(BUSYBOX_SRC)/README:
-	wget "https://www.busybox.net/downloads/$(BUSYBOX_SRC).tar.bz2"
-	tar xf $(BUSYBOX_SRC).tar.bz2
-	cp busybox_config $(BUSYBOX_SRC)/.config
+$(BUSYBOX_SRC)-$(BUSYBOX_REL)/README:
+	wget "https://www.busybox.net/downloads/$(BUSYBOX_SRC)-$(BUSYBOX_REL).tar.bz2"
+	tar xf $(BUSYBOX_SRC)-$(BUSYBOX_REL).tar.bz2
+	cd $(BUSYBOX_SRC)-$(BUSYBOX_REL) && patch -p1 < ../patches/busybox*
 
-$(BUSYBOX_SRC)/_install: $(BUSYBOX_SRC)/README
-	cd $(BUSYBOX_SRC) && make -j $(shell nproc) && make install
+$(BUSYBOX_SRC)-$(BUSYBOX_REL)/_install: $(BUSYBOX_SRC)-$(BUSYBOX_REL)/README busybox_config
+	cp busybox_config $(BUSYBOX_SRC)-$(BUSYBOX_REL)/.config
+	cd $(BUSYBOX_SRC)-$(BUSYBOX_REL) && make -j $(shell nproc) && make install
 
 espmnt:
 	mkdir espmnt
@@ -51,7 +53,7 @@ espmnt:
 rootmnt:
 	mkdir rootmnt
 
-hdimage.img: espmnt rootmnt $(GRUB_SRC)-bios/grub-install $(GRUB_SRC)-efi/grub-install $(BZIMAGE) $(BUSYBOX_SRC)/_install
+hdimage.img: espmnt rootmnt $(GRUB_SRC)-bios/grub-install $(GRUB_SRC)-efi/grub-install $(BZIMAGE) $(BUSYBOX_SRC)-$(BUSYBOX_REL)/_install
 	# create image, gpt label and partitions
 	dd if=/dev/zero of=hdimage.img bs=1M count=512
 	cat hdimage.sfdisk | sfdisk hdimage.img
@@ -67,7 +69,7 @@ hdimage.img: espmnt rootmnt $(GRUB_SRC)-bios/grub-install $(GRUB_SRC)-efi/grub-i
 	# copy base files
 	cp -r root/* rootmnt/
 	#   install busybox
-	cp -r $(BUSYBOX_SRC)/_install/* rootmnt/
+	cp -r $(BUSYBOX_SRC)-$(BUSYBOX_REL)/_install/* rootmnt/
 	#   install kernel
 	cp $(BZIMAGE) rootmnt/boot/vmlinuz
 	# install UEFI bootloader
